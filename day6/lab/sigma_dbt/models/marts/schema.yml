@@ -1,0 +1,108 @@
+version: 2
+
+mart_transactions:
+  description: "Mart containing aggregated transaction data with merchant names."
+  columns:
+    - name: transaction_id
+      description: "Unique identifier for each transaction."
+    - name: amount
+      description: "Amount of the transaction in USD."
+    - name: status
+      description: "Status of the transaction: COMPLETED, FAILED, PENDING."
+    - name: merchant_id
+      description: "Foreign key to dim_merchant."
+      tests:
+        - not_null
+    - name: merchant_name
+      description: "Name of the merchant from dim_merchant."
+    - name: customer_id
+      description: "Foreign key to dim_customer."
+    - name: transaction_date
+      description: "Date of the transaction."
+    - name: payment_method
+      description: "Payment method used: CREDIT_CARD, DEBIT_CARD, UPI."
+    - name: total_revenue
+      description: "Total revenue from completed transactions."
+      tests:
+        - generic_test:
+            function: "test_total_revenue_gte_zero"
+    - name: failure_rate_pct
+      description: "Failure rate of transactions as a percentage."
+      tests:
+        - generic_test:
+            function: "test_failure_rate_between_0_and_100"
+    - name: invalid_status_count
+      description: "Count of transactions with invalid statuses like 'CANCELLED'."
+      tests:
+        - generic_test:
+            function: "test_no_cancelled_status"
+
+  tests:
+    - generic_test:
+        function: "test_no_cancelled_status"
+```
+
+```sql
+-- models/marts/mart_transactions.sql
+WITH completed_transactions AS (
+  SELECT
+    transaction_id,
+    amount,
+    status,
+    merchant_id,
+    customer_id,
+    transaction_date,
+    payment_method
+  FROM {{ ref('fact_transactions') }}
+  WHERE status = 'COMPLETED'
+),
+
+total_revenue AS (
+  SELECT
+    SUM(amount) AS total_revenue
+  FROM completed_transactions
+),
+
+all_transactions AS (
+  SELECT
+    COUNT(*) AS total_transactions
+  FROM {{ ref('fact_transactions') }}
+),
+
+failed_transactions AS (
+  SELECT
+    COUNT(*) AS failed_transactions
+  FROM {{ ref('fact_transactions') }}
+  WHERE status = 'FAILED'
+),
+
+failure_rate AS (
+  SELECT
+    (failed_transactions.failed_transactions::DECIMAL / all_transactions.total_transactions) * 100 AS failure_rate_pct
+  FROM failed_transactions, all_transactions
+),
+
+invalid_statuses AS (
+  SELECT
+    COUNT(*) AS invalid_status_count
+  FROM {{ ref('fact_transactions') }}
+  WHERE status = 'CANCELLED'
+)
+
+SELECT
+  t.transaction_id,
+  t.amount,
+  t.status,
+  m.merchant_id,
+  m.merchant_name,
+  t.customer_id,
+  t.transaction_date,
+  t.payment_method,
+  tr.total_revenue,
+  fr.failure_rate_pct,
+  is_.invalid_status_count
+FROM {{ ref('fact_transactions') }} t
+JOIN {{ ref('dim_merchant') }} m ON t.merchant_id = m.merchant_id
+CROSS JOIN total_revenue tr
+CROSS JOIN failure_rate fr
+CROSS JOIN invalid_statuses is_
