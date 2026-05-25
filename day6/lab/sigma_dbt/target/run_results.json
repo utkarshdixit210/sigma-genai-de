@@ -1,0 +1,43 @@
+{
+  "metadata": {
+    "dbt_schema_version": "https://schemas.getdbt.com/dbt/run-results/v4.json",
+    "dbt_version": "1.11.11",
+    "generated_at": "2026-05-25T13:00:00.000000Z",
+    "invocation_id": "mock-invocation-id-day6",
+    "env": {}
+  },
+  "results": [
+    {
+      "status": "success",
+      "timing": [],
+      "thread_id": "Thread-1",
+      "execution_time": 0.45,
+      "adapter_response": {},
+      "message": "SUCCESS",
+      "failures": null,
+      "unique_id": "model.sigma_dbt.stg_transactions"
+    },
+    {
+      "status": "success",
+      "timing": [],
+      "thread_id": "Thread-1",
+      "execution_time": 0.72,
+      "adapter_response": {},
+      "message": "SUCCESS",
+      "failures": null,
+      "unique_id": "model.sigma_dbt.mart_merchant_performance"
+    },
+    {
+      "status": "fail",
+      "timing": [],
+      "thread_id": "Thread-1",
+      "execution_time": 0.28,
+      "adapter_response": {},
+      "message": "FAIL",
+      "failures": 1,
+      "unique_id": "test.sigma_dbt.accepted_values_stg_transactions_status"
+    }
+  ],
+  "elapsed_time": 1.45,
+  "args": {}
+}
