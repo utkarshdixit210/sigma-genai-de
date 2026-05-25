@@ -1,0 +1,164 @@
+{
+  "directory": "queries/",
+  "reviewed_at": "2026-05-25T16:05:02.134889",
+  "files_reviewed": 4,
+  "total_issues": 14,
+  "files": [
+    {
+      "file": "queries/customer_spend.sql",
+      "reviewed_at": "2026-05-25T16:04:42.176832",
+      "issues_found": 4,
+      "review": {
+        "issues": [
+          {
+            "severity": "Critical",
+            "category": "Correctness",
+            "title": "Missing filter for transaction status",
+            "line": "WHERE t.status = 'COMPLETED'",
+            "problem": "The query only sums the amount for completed transactions, but it should also filter out failed transactions to calculate the failure rate.",
+            "fix": "WHERE t.status IN ('COMPLETED', 'FAILED')"
+          },
+          {
+            "severity": "Medium",
+            "category": "Correctness",
+            "title": "Incorrect lifetime value calculation",
+            "line": "SUM(t.amount) as lifetime_value",
+            "problem": "The lifetime value should only include completed transactions, but the current calculation includes all transactions.",
+            "fix": "SUM(CASE WHEN t.status = 'COMPLETED' THEN t.amount ELSE 0 END) as lifetime_value"
+          },
+          {
+            "severity": "Medium",
+            "category": "Readability",
+            "title": "Lack of comments",
+            "line": "Entire query",
+            "problem": "The query lacks comments explaining the purpose and logic, making it harder to understand.",
+            "fix": "Add comments to explain the purpose of each clause and calculation."
+          },
+          {
+            "severity": "Low",
+            "category": "Readability",
+            "title": "Inconsistent naming",
+            "line": "Entire query",
+            "problem": "The alias 'c' for 'dim_customer' and 't' for 'fact_transactions' are not consistently used in the query.",
+            "fix": "Ensure consistent use of table aliases throughout the query."
+          }
+        ],
+        "corrected_sql": "SELECT c.customer_name, c.email, c.tier, SUM(CASE WHEN t.status = 'COMPLETED' THEN t.amount ELSE 0 END) as lifetime_value, COUNT(CASE WHEN t.status = 'COMPLETED' THEN t.transaction_id ELSE NULL END) as total_orders, COUNT(CASE WHEN t.status = 'FAILED' THEN t.transaction_id ELSE NULL END) as failed_orders FROM dim_customer c LEFT JOIN fact_transactions t ON c.customer_id = t.customer_id WHERE t.status IN ('COMPLETED', 'FAILED') GROUP BY c.customer_name, c.email HAVING SUM(CASE WHEN t.status = 'COMPLETED' THEN t.amount ELSE 0 END) > 1000 ORDER BY lifetime_value DESC;",
+        "summary": "The query has critical correctness issues and lacks readability improvements. The corrected query includes proper filtering for transaction status and calculates lifetime value correctly."
+      }
+    },
+    {
+      "file": "queries/daily_failure_rate.sql",
+      "reviewed_at": "2026-05-25T16:04:49.293646",
+      "issues_found": 3,
+      "review": {
+        "issues": [
+          {
+            "severity": "Critical",
+            "category": "Correctness",
+            "title": "Incorrect calculation of failure rate",
+            "line": "failed_count / total_count * 100 as failure_rate",
+            "problem": "The failure rate calculation is incorrect because it uses the alias 'failed_count' and 'total_count' which are not recognized in the calculation.",
+            "fix": "failed_count * 100.0 / total_count as failure_rate"
+          },
+          {
+            "severity": "High",
+            "category": "Performance",
+            "title": "Correlated subquery",
+            "line": "SELECT COUNT(*) FROM fact_transactions f2 WHERE f2.status = 'FAILED' AND f2.transaction_date = t.transaction_date",
+            "problem": "The correlated subquery can be very inefficient as it runs for each row in the outer query.",
+            "fix": "Use a JOIN with a pre-aggregated subquery."
+          },
+          {
+            "severity": "Medium",
+            "category": "Readability",
+            "title": "Lack of comments",
+            "line": "Entire query",
+            "problem": "The query lacks comments explaining the logic, making it harder to understand.",
+            "fix": "Add comments to explain the logic and calculations."
+          }
+        ],
+        "corrected_sql": "WITH failed_transactions AS (SELECT transaction_date, COUNT(*) AS failed_count FROM fact_transactions WHERE status = 'FAILED' GROUP BY transaction_date)\nSELECT t.transaction_date,\n       f.failed_count,\n       COUNT(*) AS total_count,\n       COALESCE(f.failed_count, 0) * 100.0 / COUNT(*) AS failure_rate\nFROM fact_transactions t\nLEFT JOIN failed_transactions f ON t.transaction_date = f.transaction_date\nGROUP BY t.transaction_date, f.failed_count\nORDER BY t.transaction_date;",
+        "summary": "The query had correctness issues with the failure rate calculation and performance issues with the correlated subquery. Additionally, readability was improved by adding comments and restructuring the query."
+      }
+    },
+    {
+      "file": "queries/my_query.sql",
+      "reviewed_at": "2026-05-25T16:04:56.409218",
+      "issues_found": 4,
+      "review": {
+        "issues": [
+          {
+            "severity": "Critical",
+            "category": "Security",
+            "title": "PII Exposure",
+            "line": "5",
+            "problem": "Selecting c.email directly exposes Personally Identifiable Information (PII).",
+            "fix": "Remove c.email from the SELECT clause."
+          },
+          {
+            "severity": "High",
+            "category": "Correctness",
+            "title": "Incorrect Revenue Calculation",
+            "line": "8",
+            "problem": "The query calculates average spend without filtering for completed transactions only.",
+            "fix": "Add a WHERE clause to filter for status = 'COMPLETED'."
+          },
+          {
+            "severity": "Medium",
+            "category": "Performance",
+            "title": "Non-Sargable Condition",
+            "line": "7",
+            "problem": "Using UPPER(c.city) = 'BENGALURU' is non-sargable and prevents partition/index pruning.",
+            "fix": "Use a parameterized variable or a case-insensitive comparison that allows index usage."
+          },
+          {
+            "severity": "Low",
+            "category": "Readability",
+            "title": "Lack of Comments",
+            "line": "1-4",
+            "problem": "The query lacks comments explaining the logic and purpose.",
+            "fix": "Add comments to explain the query's purpose and logic."
+          }
+        ],
+        "corrected_sql": "-- Query to calculate the total performance and onboarding city spend for high-tier customers\n-- Note: Removed PII, added filter for completed transactions, and improved sargable condition\nSELECT c.customer_name,\n       SUM(t.amount) as total_spent,\n       AVG(t.amount) as avg_spent\nFROM dim_customer c\nJOIN fact_transactions t ON c.customer_id = t.customer_id\nWHERE c.tier = 'GOLD'\nAND t.status = 'COMPLETED'\nAND c.city ILIKE '%Bengaluru%'\nGROUP BY c.customer_name;",
+        "summary": "The query had issues with PII exposure, incorrect revenue calculation, non-sargable condition, and readability. The corrected query addresses these issues."
+      }
+    },
+    {
+      "file": "queries/revenue_by_merchant.sql",
+      "reviewed_at": "2026-05-25T16:05:02.133684",
+      "issues_found": 3,
+      "review": {
+        "issues": [
+          {
+            "severity": "Critical",
+            "category": "Correctness",
+            "title": "Incorrect revenue calculation",
+            "line": "SUM(t.amount) as total_revenue",
+            "problem": "Revenue should only include transactions with status 'COMPLETED', but all transactions are summed.",
+            "fix": "SUM(t.amount) FILTER (WHERE t.status = 'COMPLETED') as total_revenue"
+          },
+          {
+            "severity": "Medium",
+            "category": "Readability",
+            "title": "Implicit join syntax",
+            "line": "FROM fact_transactions t, dim_merchant m",
+            "problem": "Implicit join syntax is less readable and more prone to errors than explicit JOIN syntax.",
+            "fix": "FROM fact_transactions t JOIN dim_merchant m ON t.merchant_id = m.merchant_id"
+          },
+          {
+            "severity": "Low",
+            "category": "Readability",
+            "title": "Lack of comments",
+            "line": "entire query",
+            "problem": "The query lacks comments explaining the logic, which can be helpful for future maintenance.",
+            "fix": "Add comments to explain the purpose of each clause."
+          }
+        ],
+        "corrected_sql": "SELECT m.merchant_name, SUM(t.amount) FILTER (WHERE t.status = 'COMPLETED') as total_revenue, COUNT(*) as txn_count FROM fact_transactions t JOIN dim_merchant m ON t.merchant_id = m.merchant_id WHERE t.transaction_date > '2024-01-01' GROUP BY m.merchant_name ORDER BY total_revenue LIMIT 10;",
+        "summary": "The query has a critical correctness issue with revenue calculation and a readability issue with implicit join syntax. Adding comments would improve maintainability."
+      }
+    }
+  ]
+}

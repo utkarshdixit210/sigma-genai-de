@@ -1,0 +1,43 @@
+{
+  "file": "queries/my_query.sql",
+  "reviewed_at": "2026-05-25T16:04:56.409218",
+  "issues_found": 4,
+  "review": {
+    "issues": [
+      {
+        "severity": "Critical",
+        "category": "Security",
+        "title": "PII Exposure",
+        "line": "5",
+        "problem": "Selecting c.email directly exposes Personally Identifiable Information (PII).",
+        "fix": "Remove c.email from the SELECT clause."
+      },
+      {
+        "severity": "High",
+        "category": "Correctness",
+        "title": "Incorrect Revenue Calculation",
+        "line": "8",
+        "problem": "The query calculates average spend without filtering for completed transactions only.",
+        "fix": "Add a WHERE clause to filter for status = 'COMPLETED'."
+      },
+      {
+        "severity": "Medium",
+        "category": "Performance",
+        "title": "Non-Sargable Condition",
+        "line": "7",
+        "problem": "Using UPPER(c.city) = 'BENGALURU' is non-sargable and prevents partition/index pruning.",
+        "fix": "Use a parameterized variable or a case-insensitive comparison that allows index usage."
+      },
+      {
+        "severity": "Low",
+        "category": "Readability",
+        "title": "Lack of Comments",
+        "line": "1-4",
+        "problem": "The query lacks comments explaining the logic and purpose.",
+        "fix": "Add comments to explain the query's purpose and logic."
+      }
+    ],
+    "corrected_sql": "-- Query to calculate the total performance and onboarding city spend for high-tier customers\n-- Note: Removed PII, added filter for completed transactions, and improved sargable condition\nSELECT c.customer_name,\n       SUM(t.amount) as total_spent,\n       AVG(t.amount) as avg_spent\nFROM dim_customer c\nJOIN fact_transactions t ON c.customer_id = t.customer_id\nWHERE c.tier = 'GOLD'\nAND t.status = 'COMPLETED'\nAND c.city ILIKE '%Bengaluru%'\nGROUP BY c.customer_name;",
+    "summary": "The query had issues with PII exposure, incorrect revenue calculation, non-sargable condition, and readability. The corrected query addresses these issues."
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "file": "queries/revenue_by_merchant.sql",
+  "reviewed_at": "2026-05-25T16:05:02.133684",
+  "issues_found": 3,
+  "review": {
+    "issues": [
+      {
+        "severity": "Critical",
+        "category": "Correctness",
+        "title": "Incorrect revenue calculation",
+        "line": "SUM(t.amount) as total_revenue",
+        "problem": "Revenue should only include transactions with status 'COMPLETED', but all transactions are summed.",
+        "fix": "SUM(t.amount) FILTER (WHERE t.status = 'COMPLETED') as total_revenue"
+      },
+      {
+        "severity": "Medium",
+        "category": "Readability",
+        "title": "Implicit join syntax",
+        "line": "FROM fact_transactions t, dim_merchant m",
+        "problem": "Implicit join syntax is less readable and more prone to errors than explicit JOIN syntax.",
+        "fix": "FROM fact_transactions t JOIN dim_merchant m ON t.merchant_id = m.merchant_id"
+      },
+      {
+        "severity": "Low",
+        "category": "Readability",
+        "title": "Lack of comments",
+        "line": "entire query",
+        "problem": "The query lacks comments explaining the logic, which can be helpful for future maintenance.",
+        "fix": "Add comments to explain the purpose of each clause."
+      }
+    ],
+    "corrected_sql": "SELECT m.merchant_name, SUM(t.amount) FILTER (WHERE t.status = 'COMPLETED') as total_revenue, COUNT(*) as txn_count FROM fact_transactions t JOIN dim_merchant m ON t.merchant_id = m.merchant_id WHERE t.transaction_date > '2024-01-01' GROUP BY m.merchant_name ORDER BY total_revenue LIMIT 10;",
+    "summary": "The query has a critical correctness issue with revenue calculation and a readability issue with implicit join syntax. Adding comments would improve maintainability."
+  }
+}

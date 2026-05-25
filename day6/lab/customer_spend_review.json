@@ -1,0 +1,43 @@
+{
+  "file": "queries/customer_spend.sql",
+  "reviewed_at": "2026-05-25T16:04:42.176832",
+  "issues_found": 4,
+  "review": {
+    "issues": [
+      {
+        "severity": "Critical",
+        "category": "Correctness",
+        "title": "Missing filter for transaction status",
+        "line": "WHERE t.status = 'COMPLETED'",
+        "problem": "The query only sums the amount for completed transactions, but it should also filter out failed transactions to calculate the failure rate.",
+        "fix": "WHERE t.status IN ('COMPLETED', 'FAILED')"
+      },
+      {
+        "severity": "Medium",
+        "category": "Correctness",
+        "title": "Incorrect lifetime value calculation",
+        "line": "SUM(t.amount) as lifetime_value",
+        "problem": "The lifetime value should only include completed transactions, but the current calculation includes all transactions.",
+        "fix": "SUM(CASE WHEN t.status = 'COMPLETED' THEN t.amount ELSE 0 END) as lifetime_value"
+      },
+      {
+        "severity": "Medium",
+        "category": "Readability",
+        "title": "Lack of comments",
+        "line": "Entire query",
+        "problem": "The query lacks comments explaining the purpose and logic, making it harder to understand.",
+        "fix": "Add comments to explain the purpose of each clause and calculation."
+      },
+      {
+        "severity": "Low",
+        "category": "Readability",
+        "title": "Inconsistent naming",
+        "line": "Entire query",
+        "problem": "The alias 'c' for 'dim_customer' and 't' for 'fact_transactions' are not consistently used in the query.",
+        "fix": "Ensure consistent use of table aliases throughout the query."
+      }
+    ],
+    "corrected_sql": "SELECT c.customer_name, c.email, c.tier, SUM(CASE WHEN t.status = 'COMPLETED' THEN t.amount ELSE 0 END) as lifetime_value, COUNT(CASE WHEN t.status = 'COMPLETED' THEN t.transaction_id ELSE NULL END) as total_orders, COUNT(CASE WHEN t.status = 'FAILED' THEN t.transaction_id ELSE NULL END) as failed_orders FROM dim_customer c LEFT JOIN fact_transactions t ON c.customer_id = t.customer_id WHERE t.status IN ('COMPLETED', 'FAILED') GROUP BY c.customer_name, c.email HAVING SUM(CASE WHEN t.status = 'COMPLETED' THEN t.amount ELSE 0 END) > 1000 ORDER BY lifetime_value DESC;",
+    "summary": "The query has critical correctness issues and lacks readability improvements. The corrected query includes proper filtering for transaction status and calculates lifetime value correctly."
+  }
+}
