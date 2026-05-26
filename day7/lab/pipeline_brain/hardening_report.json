@@ -1,0 +1,16 @@
+{
+  "source_file": "pipeline_brain/generated_pipeline.py",
+  "model_used": "amazon.nova-pro-v1:0",
+  "original_lines": 195,
+  "hardened_lines": 267,
+  "lines_added": 72,
+  "improvements_added": [
+    "try/except error handling added around pipeline stages",
+    "idempotency: delete-partition-then-write pattern added",
+    "row count logging expanded to cover all stages",
+    "Python logging module added (replaces print statements)"
+  ],
+  "tokens_in": 3820,
+  "tokens_out": 3367,
+  "generated_at": "2026-05-26T09:34:13.304063+00:00"
+}

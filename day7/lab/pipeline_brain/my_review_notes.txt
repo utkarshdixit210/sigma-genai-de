@@ -1,0 +1,26 @@
+DAY 7 - STUDENT CODE REVIEW NOTES
+=================================
+
+Reviewed File: generated_pipeline.py
+Fixed File:    fixed_pipeline.py
+
+Based on the 12-point checklist review done by the Code Review Agent in Module 5, I have successfully addressed the following 3 checklist findings:
+
+1. FIXED: HARDCODED_PATHS (FAIL)
+   - Finding: The original pipeline hardcoded S3 bucket paths ("s3://datalake/bronze/transactions/", etc.) in main().
+   - Fix: Removed all hardcoded string parameters from the direct logic. Parameterized the main() function signature with default configuration paths and ensured all stage callables use these variables.
+
+2. FIXED: ROW_COUNT_LOGGING (WARN)
+   - Finding: Row counts were not being tracked and logged systematically at each checkpoint.
+   - Fix: Added print statement counters logging .count() at key stage steps:
+     * Ingest Bronze input row count.
+     * Transform Silver initial read count.
+     * After-filter row count.
+     * After-dedup row count.
+     * Final Silver write row count.
+
+3. FIXED: SCHEMA_VALIDATION (WARN)
+   - Finding: No check that expected columns existed in the input Bronze DataFrame before starting calculations.
+   - Fix: Implemented strict subset validation checking. Before starting Silver transforms, the code verifies:
+     {"transaction_id", "customer_id", "amount", "txn_date", "status", "merchant_id"} ⊆ actual_columns.
+     If validation fails, a descriptive ValueError is thrown to fail-fast.

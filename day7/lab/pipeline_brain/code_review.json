@@ -1,0 +1,112 @@
+{
+  "checkpoints": [
+    {
+      "id": 1,
+      "name": "IDEMPOTENCY",
+      "status": "PASS",
+      "evidence": "No violation found",
+      "finding": "All writes use 'overwrite' mode.",
+      "fix": "No fix required."
+    },
+    {
+      "id": 2,
+      "name": "ERROR_HANDLING",
+      "status": "PASS",
+      "evidence": "try/except blocks are present around pipeline stages.",
+      "finding": "Error handling is implemented.",
+      "fix": "No fix required."
+    },
+    {
+      "id": 3,
+      "name": "PARTITION_PRUNING",
+      "status": "PASS",
+      "evidence": "Filters are applied on partition columns before reads.",
+      "finding": "Partition pruning is implemented.",
+      "fix": "No fix required."
+    },
+    {
+      "id": 4,
+      "name": "ROW_COUNT_LOGGING",
+      "status": "PASS",
+      "evidence": "Row counts and logging statements are present after transformations.",
+      "finding": "Row count logging is implemented.",
+      "fix": "No fix required."
+    },
+    {
+      "id": 5,
+      "name": "BUSINESS_RULES",
+      "status": "PASS",
+      "evidence": "Aggregations are filtered by status='COMPLETED'.",
+      "finding": "Business rules are correctly implemented.",
+      "fix": "No fix required."
+    },
+    {
+      "id": 6,
+      "name": "NULL_HANDLING",
+      "status": "PASS",
+      "evidence": "Null handling is implemented using .isNotNull() and .filter(col.isNotNull()).",
+      "finding": "Null handling is implemented.",
+      "fix": "No fix required."
+    },
+    {
+      "id": 7,
+      "name": "BROADCAST_HINT",
+      "status": "PASS",
+      "evidence": "Broadcast hint is used in join operations.",
+      "finding": "Broadcast hint is implemented.",
+      "fix": "No fix required."
+    },
+    {
+      "id": 8,
+      "name": "HARDCODED_PATHS",
+      "status": "FAIL",
+      "evidence": "Hardcoded paths are used directly as file paths.",
+      "finding": "Hardcoded paths are present.",
+      "fix": "Replace hardcoded paths with variables or configuration parameters."
+    },
+    {
+      "id": 9,
+      "name": "SCHEMA_VALIDATION",
+      "status": "PASS",
+      "evidence": "Schema validation is performed before transformations.",
+      "finding": "Schema validation is implemented.",
+      "fix": "No fix required."
+    },
+    {
+      "id": 10,
+      "name": "DEDUPLICATION",
+      "status": "PASS",
+      "evidence": "Deduplication is performed using.dropDuplicates(['transaction_id']).",
+      "finding": "Deduplication is implemented.",
+      "fix": "No fix required."
+    },
+    {
+      "id": 11,
+      "name": "METADATA_OUTPUT",
+      "status": "PASS",
+      "evidence": "Metadata is written to a file using.write.json().",
+      "finding": "Metadata output is implemented.",
+      "fix": "No fix required."
+    },
+    {
+      "id": 12,
+      "name": "IMPORTS",
+      "status": "PASS",
+      "evidence": "No wildcard imports are present.",
+      "finding": "Imports are correctly implemented.",
+      "fix": "No fix required."
+    }
+  ],
+  "summary": {
+    "pass_count": 11,
+    "fail_count": 1,
+    "warn_count": 0,
+    "merge_recommendation": "APPROVE_WITH_CHANGES",
+    "top_3_fixes": [
+      "Replace hardcoded paths with variables or configuration parameters."
+    ]
+  },
+  "reviewed_file": "pipeline_brain/generated_pipeline.py",
+  "reviewed_at": "2026-05-26T11:55:35.724810+00:00",
+  "model": "amazon.nova-pro-v1:0"
+}
