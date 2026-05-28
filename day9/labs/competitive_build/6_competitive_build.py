@@ -58,6 +58,7 @@ SCRIPT_DIR      = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_DIR      = os.path.normpath(os.path.join(SCRIPT_DIR, "..", "output"))
 COMPETITIVE_DIR = OUTPUT_DIR   # all sprint outputs go to labs/output/
 CHALLENGE_PATH  = os.path.join(SCRIPT_DIR, "challenge_pipeline.py")
+DEVOPS_BRAIN_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, "..", "..", "..", "day8", "lab", "devops_brain"))
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -483,13 +484,16 @@ into the test file so it runs without any imports from challenge_pipeline.
         output = proc.stdout + proc.stderr
 
         # Count tests that were collected and ran (passed or failed — not errors)
-        passed_count = output.count(" passed") + output.count(" PASSED")
-        failed_count = output.count(" failed") + output.count(" FAILED")
-        error_count  = output.count(" error")
+        passed_match = re.search(r"(\d+)\s+passed", output)
+        failed_match = re.search(r"(\d+)\s+failed", output)
+        error_match  = re.search(r"(\d+)\s+error", output)
+        passed_count = int(passed_match.group(1)) if passed_match else 0
+        failed_count = int(failed_match.group(1)) if failed_match else 0
+        error_count  = int(error_match.group(1)) if error_match else 0
         ran          = passed_count + failed_count
 
         passed = ran >= 2
-
+ 
         status_str = green("PASS") if passed else red("FAIL")
         print(f"  pytest: {passed_count} passed, {failed_count} failed, {error_count} errors")
         print(f"  Result: [{status_str}]  (need ≥2 running tests, got {ran})\n")
@@ -690,7 +694,8 @@ def print_scorecard(checks: list) -> int:
         print(f"\n  {yellow(bold('CONDITIONAL SHIP'))}  Fix the red items above before merging.")
     else:
         verdict = "DOESN'T SHIP"
-        print(f"\n  {red(bold('DOESN\'T SHIP ✗'))}  Too many failures. This PR is not ready.")
+        doesnt_ship = red(bold("DOESN'T SHIP ✗"))
+        print(f"\n  {doesnt_ship}  Too many failures. This PR is not ready.")
 
     print("=" * 68)
     return score, verdict

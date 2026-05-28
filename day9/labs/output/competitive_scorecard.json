@@ -1,0 +1,56 @@
+{
+  "sprint": "Sprint 6 — Competitive Build",
+  "generated_at": "2026-05-28T12:02:22.910315",
+  "challenge_pipeline": "/Users/as-mac-1288/sigma-genai-de/day9/labs/competitive_build/challenge_pipeline.py",
+  "score": 5,
+  "max_score": 5,
+  "verdict": "SHIP",
+  "student_judgment": "I would fix the missing datetime import (BUG 3) first to prevent immediate runtime NameErrors during pipeline execution.",
+  "checks": {
+    "code_review": {
+      "check": "code_review",
+      "model": "amazon.nova-lite-v1:0",
+      "total_findings": 5,
+      "critical": 2,
+      "high": 1,
+      "planted_bugs_caught": 4,
+      "pass_threshold": 3,
+      "passed": true,
+      "review": "[CRITICAL] — Missing import for datetime\n  Location: apply_silver_rules function\n  Problem: The datetime module is used but not imported, causing a NameError at runtime.\n  Fix: Add `from datetime import datetime` at the top of the script.\n\n[CRITICAL] — Incorrect date comparison in filter_recent_transactions\n  Location: filter_recent_transactions function, line 18\n  Problem: The comparison uses `>=` instead of `>`, which includes the cutoff date itself, violating the business rule.\n  Fix: Change `txn_date >= cutoff` to `txn_date > cutoff`.\n\n[HIGH] — Untracked dependency in CI\n  Location: Line 6\n  Problem: The requests module is imported but not listed in the requirements.txt, causing an ImportError in CI.\n  Fix: Add `requests` to the requirements.txt file.\n\n[MEDIUM] — Exception swallowing in load_to_silver\n  Location: load_to_silver function, line 29\n  Problem: Exceptions during insertion are logged but not propagated, leading to silent data loss.\n  Fix: Rethrow the exception after logging it or handle it appropriately to ensure the caller is aware of the failure.\n\n[MEDIUM] — Potential data loss due to INSERT OR IGNORE\n  Location: load_to_silver function, line 19\n  Problem: Using `INSERT OR IGNORE` might lead to data loss if there are duplicate keys, which is not logged or handled.\n  Fix: Consider logging or handling cases where rows are ignored due to duplicates to ensure data integrity."
+    },
+    "documentation": {
+      "check": "documentation",
+      "total_functions": 5,
+      "documented_functions": 5,
+      "coverage_pct": 100.0,
+      "pass_threshold_pct": 50,
+      "ai_doc_score": 6,
+      "ai_doc_reason": "Docstrings and type hints are present, but there are missing details and some bugs noted in the comments.",
+      "passed": true
+    },
+    "testing": {
+      "check": "testing",
+      "test_file": "/Users/as-mac-1288/sigma-genai-de/day9/labs/output/test_challenge_pipeline.py",
+      "tests_ran": 3,
+      "passed": 3,
+      "failed": 0,
+      "errors": 0,
+      "pass_threshold": 2,
+      "check_passed": true,
+      "pytest_output": "============================= test session starts ==============================\ncollected 3 items\n\n../output/test_challenge_pipeline.py ...                                 [100%]\n\n============================== 3 passed in 0.05s ===============================\n"
+    },
+    "ci_slo": {
+      "check": "ci_slo",
+      "ci_yml_found": true,
+      "ci_yml_path": "/Users/as-mac-1288/sigma-genai-de/day8/lab/devops_brain/pipeline_ci.yml",
+      "slo_json_found": true,
+      "passed": true
+    },
+    "observability": {
+      "check": "observability",
+      "obs_report_found": true,
+      "slo_priority": "Monitor for ImportError in CI, as it will halt the pipeline early and prevent subsequent failures.",
+      "passed": true
+    }
+  }
+}

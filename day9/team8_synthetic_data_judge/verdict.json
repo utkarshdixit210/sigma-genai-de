@@ -1,0 +1,45 @@
+{
+  "verdict": "NOT SAFE",
+  "confidence_pct": 95,
+  "total_issues": 5,
+  "critical_issues": 4,
+  "minor_issues": 1,
+  "findings": [
+    {
+      "id": "T8a",
+      "title": "UPI amount exceeds \u20b91,00,000 NPCI limit",
+      "severity": "CRITICAL",
+      "rows_affected": 1,
+      "reason": "NPCI caps UPI transactions at \u20b91,00,000. SYN004 has \u20b91,50,000 via UPI \u2014 impossible in production. Any test using this row would give a FALSE PASS on amount validation."
+    },
+    {
+      "id": "T8b",
+      "title": "Transaction with future date",
+      "severity": "CRITICAL",
+      "rows_affected": 1,
+      "reason": "SYN008 has date 2099-06-15 \u2014 no real payment gateway would process a transaction dated 75 years in the future. Tests relying on date-range filters would include phantom data."
+    },
+    {
+      "id": "T8c",
+      "title": "Invalid transaction status 'APPROVED'",
+      "severity": "CRITICAL",
+      "rows_affected": 1,
+      "reason": "SYN005 has status 'APPROVED' which does not exist in Sigma DataTech's payment processing system. Production only uses COMPLETED/FAILED/PENDING. Any status-based aggregation or filter in tests would silently exclude or miscount this row."
+    },
+    {
+      "id": "T8d",
+      "title": "Merchant ID does not exist in merchants table",
+      "severity": "CRITICAL",
+      "rows_affected": 1,
+      "reason": "SYN006 references merchant M009 which does not exist in the merchants table. In production, every transaction must reference a registered merchant. JOIN-based reports would drop this row silently \u2014 a test using this data would miss an entire transaction category."
+    },
+    {
+      "id": "T8e",
+      "title": "\u20b90 COMPLETED transaction",
+      "severity": "MINOR",
+      "rows_affected": 1,
+      "reason": "SYN007 is a \u20b90 completed transaction. Indian payment gateways reject zero-value charges. While this won't crash a test, it will skew revenue calculations and average transaction value metrics."
+    }
+  ],
+  "what_ai_got_wrong": "The AI Statistician gave a high realism score (>80%) because all standard statistical tests passed \u2014 means, distributions, cardinality, and null rates all matched the real data. However, statistics CANNOT catch domain-specific impossibilities: UPI has a \u20b91L limit set by NPCI, 'APPROVED' is not a valid status in Indian payment systems, merchant M009 doesn't exist, and future-dated transactions are physically impossible. Good synthetic data requires domain knowledge injection \u2014 not just statistical mimicry."
+}
