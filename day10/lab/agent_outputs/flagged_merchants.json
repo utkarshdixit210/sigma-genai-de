@@ -1,0 +1,52 @@
+[
+  {
+    "merchant_id": "M001",
+    "reason": "transaction count is 2 or more",
+    "flagged_at": "2026-05-29T12:10:05.682563"
+  },
+  {
+    "merchant_id": "M002",
+    "reason": "transaction count is 2 or more",
+    "flagged_at": "2026-05-29T12:10:06.945998"
+  },
+  {
+    "merchant_id": "M004",
+    "reason": "transaction count is 2 or more",
+    "flagged_at": "2026-05-29T12:10:08.213213"
+  },
+  {
+    "merchant_id": "M006",
+    "reason": "transaction count is 2 or more",
+    "flagged_at": "2026-05-29T12:10:09.508888"
+  },
+  {
+    "merchant_id": "M008",
+    "reason": "transaction count is 2 or more",
+    "flagged_at": "2026-05-29T12:10:10.868911"
+  },
+  {
+    "merchant_id": "M001",
+    "reason": "transaction count is high",
+    "flagged_at": "2026-05-29T14:54:54.236464"
+  },
+  {
+    "merchant_id": "M002",
+    "reason": "transaction count is high",
+    "flagged_at": "2026-05-29T14:54:55.581710"
+  },
+  {
+    "merchant_id": "M004",
+    "reason": "transaction count is high",
+    "flagged_at": "2026-05-29T14:54:56.736195"
+  },
+  {
+    "merchant_id": "M006",
+    "reason": "transaction count is high",
+    "flagged_at": "2026-05-29T14:54:58.011442"
+  },
+  {
+    "merchant_id": "M008",
+    "reason": "transaction count is high",
+    "flagged_at": "2026-05-29T14:54:59.205808"
+  }
+]
