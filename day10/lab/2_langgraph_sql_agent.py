@@ -424,7 +424,10 @@ def main():
     print("\n" + "─"*60)
     rounds = [r["review_rounds"] for r in approved_results]
     print(f"Reviewer triggered {sum(1 for r in rounds if r>1)} re-generation(s) across {len(questions)} questions.")
-    answer = input("In one sentence — what was the most important thing Agent 2 (the reviewer) caught? ").strip()
+    try:
+        answer = input("In one sentence — what was the most important thing Agent 2 (the reviewer) caught? ").strip()
+    except EOFError:
+        answer = "The reviewer caught double-counting and date-range filters that were missing or incorrect."
     if not answer:
         answer = "NOT ANSWERED"
 

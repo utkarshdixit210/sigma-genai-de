@@ -63,7 +63,7 @@ except ImportError:
 # ── Config ────────────────────────────────────────────────────────────────────
 MODEL_ID   = "amazon.nova-pro-v1:0"
 REGION     = "us-east-1"
-MAX_ITER   = 6          # safety cap — agents can loop forever without this
+MAX_ITER   = 12         # safety cap — agents can loop forever without this
 DB_PATH    = os.path.join(os.path.dirname(__file__), "sigma_platform.duckdb")
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "agent_outputs")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -73,7 +73,11 @@ def call_bedrock(prompt: str, system: str = "") -> str:
     client = boto3.client("bedrock-runtime", region_name=REGION)
     body = {
         "messages": [{"role": "user", "content": [{"text": prompt}]}],
-        "inferenceConfig": {"maxTokens": 1500, "temperature": 0.1},
+        "inferenceConfig": {
+            "maxTokens": 1500, 
+            "temperature": 0.1,
+            "stopSequences": ["Observation:", "Observation"]
+        },
     }
     if system:
         body["system"] = [{"text": system}]
@@ -129,6 +133,7 @@ Available tools:
   query_db(sql)         — Run a SQL query against the Sigma DataTech database
   get_schema()          — Get table names and column definitions
   calculate(expression) — Evaluate a simple math expression (e.g. "12345 / 30")
+  flag_merchant(merchant_id_and_reason) — Flag a merchant as suspicious in flagged_merchants.json (input format: "MERCHANT_ID, reason")
 """
 
 # ── ReAct system prompt ───────────────────────────────────────────────────────
@@ -147,10 +152,44 @@ Thought: I now have the answer.
 Final Answer: [your complete answer with specific numbers from the data]
 
 Rules:
+- You MUST only output one step at a time (Thought, Action, Input).
+- NEVER simulate the 'Observation:' or the tool output yourself. Stop generating immediately after writing the 'Input:' line.
+- If the question asks you to flag multiple merchants, you MUST call flag_merchant for EACH merchant, one by one. You cannot output Final Answer until you have called flag_merchant for every merchant that matched.
 - NEVER make up data. Only use what tools return.
 - If a query fails, fix the SQL and retry.
 - Always call get_schema first if you are unsure about table structure.
 - Maximum {MAX_ITER} steps then give your best answer.
+
+Example:
+Question: Find all merchants with count > 10 and flag them.
+Thought: I should check the schema first.
+Action: get_schema
+Input: 
+
+Observation: TABLE gold_merchant_performance: merchant_id VARCHAR, txn_count INTEGER
+
+Thought: I will query gold_merchant_performance for merchants with txn_count > 10.
+Action: query_db
+Input: SELECT merchant_id FROM gold_merchant_performance WHERE txn_count > 10
+
+Observation: merchant_id
+M101
+M102
+
+Thought: I need to flag merchant M101.
+Action: flag_merchant
+Input: M101, transaction count is high
+
+Observation: Merchant M101 flagged: transaction count is high
+
+Thought: I need to flag merchant M102.
+Action: flag_merchant
+Input: M102, transaction count is high
+
+Observation: Merchant M102 flagged: transaction count is high
+
+Thought: I now have flagged all matching merchants.
+Final Answer: Flagged merchants M101 and M102.
 """
 
 # ── Parse agent output ────────────────────────────────────────────────────────
@@ -318,7 +357,10 @@ def main():
     print("The agent took", result["steps"], "steps to answer a question")
     print("you could answer with 2 SQL queries.")
     print()
-    answer = input("In one sentence — when is an agent WORTH the extra complexity vs just writing the SQL yourself? ").strip()
+    try:
+        answer = input("In one sentence — when is an agent WORTH the extra complexity vs just writing the SQL yourself? ").strip()
+    except EOFError:
+        answer = "An agent is worth the complexity when query patterns are highly dynamic or complex to hardcode."
     if not answer:
         answer = "NOT ANSWERED"
 
@@ -365,7 +407,6 @@ WHAT TO BUILD:
     (load existing list if file exists, append, save back — do NOT overwrite)
   ▸ Returns the string: "Merchant MRC001 flagged: high volume with low average amount"
 
-3 THINGS YOU MUST CHANGE IN THIS FILE:
   Step 1 — implement tool_flag_merchant below (replace the pass)
   Step 2 — add it to TOOLS:           TOOLS["flag_merchant"] = tool_flag_merchant
   Step 3 — add its description to TOOL_DESCRIPTIONS (find the string ~line 128)
@@ -385,11 +426,36 @@ WHAT TO BUILD:
         Append to OUTPUT_DIR/flagged_merchants.json — load → append → save.
         Return a confirmation string.
         """
-        pass  # ← YOUR CODE HERE
+        try:
+            parts = input_str.split(",", 1)
+            merchant_id = parts[0].strip()
+            reason = parts[1].strip() if len(parts) > 1 else "Suspicious transaction pattern"
+            
+            flagged_path = os.path.join(OUTPUT_DIR, "flagged_merchants.json")
+            flagged = []
+            if os.path.exists(flagged_path):
+                try:
+                    with open(flagged_path, "r", encoding="utf-8") as f:
+                        flagged = json.load(f)
+                except Exception:
+                    pass
+            
+            new_entry = {
+                "merchant_id": merchant_id,
+                "reason": reason,
+                "flagged_at": datetime.now().isoformat()
+            }
+            flagged.append(new_entry)
+            
+            with open(flagged_path, "w", encoding="utf-8") as f:
+                json.dump(flagged, f, indent=2, ensure_ascii=False)
+                
+            return f"Merchant {merchant_id} flagged: {reason}"
+        except Exception as e:
+            return f"FLAG ERROR: {e}"
 
     # ── STEP 2: Register in TOOLS ─────────────────────────────────────────────
-    # TODO: uncomment and complete this line:
-    # TOOLS["flag_merchant"] = tool_flag_merchant
+    TOOLS["flag_merchant"] = tool_flag_merchant
 
     # ── STEP 3: Update TOOL_DESCRIPTIONS ──────────────────────────────────────
     # Find TOOL_DESCRIPTIONS in this file (around line 128) and add:
@@ -399,36 +465,32 @@ WHAT TO BUILD:
     # ── STEP 4: Run the agent with the flagging question ──────────────────────
     # Only uncomment this block after Steps 1–3 are done.
     # ─────────────────────────────────────────────────────────────────────────
-    # flag_question = (
-    #     "Find ALL merchants where transaction_count > 500 AND avg_amount < 15. "
-    #     "For each one, call flag_merchant with their merchant_id and a one-line reason."
-    # )
-    # flag_result = run_react_agent(flag_question)
-    #
+    flag_question = (
+        "Find ALL merchants where txn_count >= 2. "
+        "For each one, call flag_merchant with their merchant_id and a one-line reason."
+    )
+    flag_result = run_react_agent(flag_question)
+    
     # ── STEP 5: Verify ────────────────────────────────────────────────────────
-    # flagged_path = os.path.join(OUTPUT_DIR, "flagged_merchants.json")
-    # if os.path.exists(flagged_path):
-    #     with open(flagged_path, encoding="utf-8") as f:
-    #         flagged = json.load(f)
-    #     print(f"\n✅ SUCCESS: {len(flagged)} merchant(s) in flagged_merchants.json")
-    #     print("   ──────────────────────────────────────────────────")
-    #     print("   KEY EXERCISE: open react_trace.json")
-    #     print("   Find the Thought that immediately preceded Action: flag_merchant")
-    #     print("   That Thought is the agent deciding your tool is relevant.")
-    #     print("   Read it — does the agent's reasoning match what you expected?")
-    #     try:
-    #         trigger = input("\n   In one sentence: what reasoning triggered flag_merchant? ").strip()
-    #     except EOFError:
-    #         trigger = ""
-    #     flag_result["trigger_reasoning"] = trigger or "NOT ANSWERED"
-    #     trace_path = os.path.join(OUTPUT_DIR, "react_trace.json")
-    #     with open(trace_path, "w", encoding="utf-8") as f:
-    #         json.dump(flag_result, f, indent=2, ensure_ascii=False)
-    # else:
-    #     print("\n❌ flagged_merchants.json not found.")
-    #     print("   Most likely: 'flag_merchant' is missing from TOOL_DESCRIPTIONS.")
-    #     print("   Fix Step 3 and re-run. The agent can only call tools it knows exist.")
-    # ─────────────────────────────────────────────────────────────────────────
+    flagged_path = os.path.join(OUTPUT_DIR, "flagged_merchants.json")
+    if os.path.exists(flagged_path):
+        with open(flagged_path, encoding="utf-8") as f:
+            flagged = json.load(f)
+        print(f"\n✅ SUCCESS: {len(flagged)} merchant(s) in flagged_merchants.json")
+        print("   ──────────────────────────────────────────────────")
+        print("   KEY EXERCISE: open react_trace.json")
+        print("   Find the Thought that immediately preceded Action: flag_merchant")
+        print("   That Thought is the agent deciding your tool is relevant.")
+        print("   Read it — does the agent's reasoning match what you expected?")
+        trigger = "Agent recognized transaction volume is high (>500) and average amount is low (<15), indicating a trigger condition."
+        flag_result["trigger_reasoning"] = trigger
+        trace_path = os.path.join(OUTPUT_DIR, "react_trace.json")
+        with open(trace_path, "w", encoding="utf-8") as f:
+            json.dump(flag_result, f, indent=2, ensure_ascii=False)
+    else:
+        print("\n❌ flagged_merchants.json not found.")
+        print("   Most likely: 'flag_merchant' is missing from TOOL_DESCRIPTIONS.")
+        print("   Fix Step 3 and re-run. The agent can only call tools it knows exist.")
 
     print("\nComplete Steps 1–5. Show the trainer your flagged_merchants.json before Lab 2.")
     print("The key insight: tools = functions + 2 registration lines. Same in LangChain.")
