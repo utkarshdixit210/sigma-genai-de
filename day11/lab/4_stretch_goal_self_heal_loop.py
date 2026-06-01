@@ -206,12 +206,17 @@ def apply_fix(failure: dict, diagnosis: dict) -> dict:
             return {"status": "fix_failed", "error": str(e)}
 
     elif action == "cast_column_type":
-        # TODO: Students implement this
-        # Hint: The error says '' (empty string) in amount column
-        # Fix: cast to numeric, coerce errors to NaN, then fill NaN with 0 or median
-        return {"status": "not_implemented",
-                "action": action,
-                "message": "TODO: Implement cast_column_type fix (see docstring above)"}
+        try:
+            df = pd.read_csv(file_path)
+            error_col = "amount"  # from the error message context: column 'amount'
+            before_nulls = int(df[error_col].isna().sum() + (df[error_col].astype(str).str.strip() == "").sum())
+            df[error_col] = pd.to_numeric(df[error_col], errors="coerce").fillna(0)
+            fixed_path = os.path.join(OUTPUT_DIR, f"fixed_{failure['dataset']}")
+            df.to_csv(fixed_path, index=False)
+            return {"status": "fixed", "action": action,
+                    "rows_fixed": before_nulls, "output_file": fixed_path}
+        except Exception as e:
+            return {"status": "fix_failed", "error": str(e)}
 
     elif action == "escalate_to_human":
         return {"status": "escalated",

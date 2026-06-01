@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-05-29T18:12:30.831455",
+  "system": "Merchant Risk Intelligence System",
+  "framework": "LangGraph (routing) + CrewAI (investigation)",
+  "results": [
+    {
+      "merchant_id": "M004",
+      "risk_score": 40,
+      "txn_summary": "5 txns, avg $1748.00, 0 nulls",
+      "verdict": "CLEARED: risk_score 40 below threshold"
+    },
+    {
+      "merchant_id": "M003",
+      "risk_score": 60,
+      "txn_summary": "3 txns, avg $42.67, 0 nulls",
+      "verdict": "RISK LEVEL: MEDIUM  \nKEY FINDING: Suspicious transaction velocity and data cleanliness.  \nRECOMMENDATION: Investigate merchant's business nature and typical transaction patterns.\n\nSQL FIX RECOMMENDATION:\n-- Flag merchant transactions for review in quality_flag column due to suspicious transaction velocity and data cleanliness\nUPDATE silver_transactions SET quality_flag = 'REVIEW' WHERE merchant_id = 'M003' AND quality_flag!= 'REVIEW';"
+    }
+  ]
+}

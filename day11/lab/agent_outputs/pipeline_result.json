@@ -1,0 +1,200 @@
+{
+  "pattern": "sequential_pipeline",
+  "timestamp": "2026-06-01T12:04:29.767630",
+  "input_file": {
+    "filename": "transactions_raw.csv",
+    "row_count": 500,
+    "columns": [
+      "transaction_id",
+      "merchant_name",
+      "category",
+      "amount",
+      "currency",
+      "transaction_date",
+      "status",
+      "customer_id",
+      "payment_method",
+      "merchant_city"
+    ],
+    "sample_issues": [
+      "4 blank transaction_ids",
+      "7 null amounts",
+      "3 negative amounts",
+      "2 invalid dates",
+      "1 unknown currency"
+    ]
+  },
+  "stages": [
+    {
+      "completeness_percentage": 95.6,
+      "key_issues": [
+        "4 blank transaction_ids",
+        "7 null amounts",
+        "3 negative amounts",
+        "2 invalid dates",
+        "1 unknown currency"
+      ],
+      "recommended_next_action": "Perform data cleaning to handle blank transaction_ids, null and negative amounts, invalid dates, and unknown currency. Validate and impute missing values where appropriate.",
+      "pass_to_next": {
+        "filename": "transactions_raw.csv",
+        "row_count": 500,
+        "columns": [
+          "transaction_id",
+          "merchant_name",
+          "category",
+          "amount",
+          "currency",
+          "transaction_date",
+          "status",
+          "customer_id",
+          "payment_method",
+          "merchant_city"
+        ],
+        "sample_issues": [
+          "4 blank transaction_ids",
+          "7 null amounts",
+          "3 negative amounts",
+          "2 invalid dates",
+          "1 unknown currency"
+        ],
+        "completeness_percentage": 95.6
+      },
+      "_stage": "Profile",
+      "_agent": "Profiler Agent",
+      "_timestamp": "2026-06-01T12:04:24.609119"
+    },
+    {
+      "findings": {
+        "blank_transaction_ids": {
+          "description": "There are 4 blank transaction_ids which are critical for identifying and tracking transactions.",
+          "classification": "block-load"
+        },
+        "null_amounts": {
+          "description": "There are 7 null amounts which are essential for financial calculations and reporting.",
+          "classification": "block-load"
+        },
+        "negative_amounts": {
+          "description": "There are 3 negative amounts which are not valid as transactions cannot have negative values.",
+          "classification": "block-load"
+        },
+        "invalid_dates": {
+          "description": "There are 2 invalid dates which can cause issues in time-based analysis and reporting.",
+          "classification": "quarantine"
+        },
+        "unknown_currency": {
+          "description": "There is 1 unknown currency which can lead to incorrect financial calculations and reporting.",
+          "classification": "quarantine"
+        }
+      },
+      "pass_to_next": {
+        "filename": "transactions_raw.csv",
+        "row_count": 500,
+        "columns": [
+          "transaction_id",
+          "merchant_name",
+          "category",
+          "amount",
+          "currency",
+          "transaction_date",
+          "status",
+          "customer_id",
+          "payment_method",
+          "merchant_city"
+        ],
+        "completeness_percentage": 95.6,
+        "issues": {
+          "blank_transaction_ids": {
+            "count": 4,
+            "classification": "block-load"
+          },
+          "null_amounts": {
+            "count": 7,
+            "classification": "block-load"
+          },
+          "negative_amounts": {
+            "count": 3,
+            "classification": "block-load"
+          },
+          "invalid_dates": {
+            "count": 2,
+            "classification": "quarantine"
+          },
+          "unknown_currency": {
+            "count": 1,
+            "classification": "quarantine"
+          }
+        }
+      },
+      "_stage": "Validate",
+      "_agent": "Quality Agent",
+      "_timestamp": "2026-06-01T12:04:27.356478"
+    },
+    {
+      "load_decision": "quarantined_partial",
+      "justification": "The file has several block-load issues that prevent a clean load, but not all issues are severe enough to warrant a complete rejection.",
+      "findings": {
+        "block_load_issues": [
+          {
+            "issue": "blank_transaction_ids",
+            "count": 4,
+            "classification": "block-load"
+          },
+          {
+            "issue": "null_amounts",
+            "count": 7,
+            "classification": "block-load"
+          },
+          {
+            "issue": "negative_amounts",
+            "count": 3,
+            "classification": "block-load"
+          }
+        ],
+        "quarantine_issues": [
+          {
+            "issue": "invalid_dates",
+            "count": 2,
+            "classification": "quarantine"
+          },
+          {
+            "issue": "unknown_currency",
+            "count": 1,
+            "classification": "quarantine"
+          }
+        ]
+      },
+      "pass_to_next": {
+        "filename": "transactions_raw.csv",
+        "row_count": 500,
+        "completeness_percentage": 95.6,
+        "issues": {
+          "blank_transaction_ids": {
+            "count": 4,
+            "classification": "block-load"
+          },
+          "null_amounts": {
+            "count": 7,
+            "classification": "block-load"
+          },
+          "negative_amounts": {
+            "count": 3,
+            "classification": "block-load"
+          },
+          "invalid_dates": {
+            "count": 2,
+            "classification": "quarantine"
+          },
+          "unknown_currency": {
+            "count": 1,
+            "classification": "quarantine"
+          }
+        }
+      },
+      "_stage": "LoadDecision",
+      "_agent": "Loader Agent",
+      "_timestamp": "2026-06-01T12:04:29.765925"
+    }
+  ],
+  "final_decision": "quarantined_partial",
+  "student_judgment": "The PIIAgent may act on or pass data downstream before QualityAgent finishes validating it, meaning PII decisions could be based on dirty or incomplete data that QualityAgent would have flagged or fixed."
+}

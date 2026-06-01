@@ -1,0 +1,141 @@
+{
+  "agent": "SelfHealAgent",
+  "run_timestamp": "2026-06-01T12:08:49.110355",
+  "total_incidents": 3,
+  "healed": 2,
+  "escalated": 3,
+  "incidents": [
+    {
+      "incident_id": "INC-001",
+      "timestamp": "2026-06-01T12:08:40.710760",
+      "pipeline": "transactions_daily_load",
+      "original_error": "IntegrityError: null value in column 'transaction_id' violates not-null constraint",
+      "heal_attempt": 1,
+      "diagnosis": {
+        "root_cause_category": "null_data",
+        "root_cause_summary": "The pipeline failed due to null values in the 'transaction_id' column, which is a primary key and cannot accept null values.",
+        "fix_action": "drop_bad_rows",
+        "fix_safe_to_automate": true,
+        "fix_instructions": "Automate the process to drop rows with null values in the 'transaction_id' column before loading the data into the database.",
+        "estimated_data_loss_pct": 0.5
+      },
+      "fix_applied": {
+        "status": "fixed",
+        "action": "drop_bad_rows",
+        "rows_dropped": 24,
+        "output_file": "/Users/as-mac-1288/sigma-genai-de/day11/lab/agent_outputs/fixed_transactions_raw.csv"
+      },
+      "validation": {
+        "validation": "passed",
+        "clean_rows": 476,
+        "message": "Fixed file has 476 clean rows"
+      },
+      "outcome": "passed",
+      "alert_required": false
+    },
+    {
+      "incident_id": "INC-002",
+      "timestamp": "2026-06-01T12:08:42.138900",
+      "pipeline": "transactions_daily_load",
+      "original_error": "ColumnNotFoundError: column 'upi_ref_id' not found in target table",
+      "heal_attempt": 1,
+      "diagnosis": {
+        "root_cause_category": "schema_drift",
+        "root_cause_summary": "The target table schema has changed and is missing the 'upi_ref_id' column that is present in the source data.",
+        "fix_action": "add_missing_column",
+        "fix_safe_to_automate": true,
+        "fix_instructions": "Alter the target table to add the missing 'upi_ref_id' column with the appropriate data type and rerun the pipeline.",
+        "estimated_data_loss_pct": 0
+      },
+      "fix_applied": {
+        "status": "unknown_action",
+        "action": "add_missing_column"
+      },
+      "validation": {
+        "validation": "skipped",
+        "message": "Status: unknown_action"
+      },
+      "outcome": "skipped",
+      "alert_required": true
+    },
+    {
+      "incident_id": "INC-002",
+      "timestamp": "2026-06-01T12:08:44.684361",
+      "pipeline": "transactions_daily_load",
+      "original_error": "ColumnNotFoundError: column 'upi_ref_id' not found in target table",
+      "heal_attempt": 2,
+      "diagnosis": {
+        "root_cause_category": "schema_drift",
+        "root_cause_summary": "The target table is missing the 'upi_ref_id' column that is present in the source dataset.",
+        "fix_action": "add_missing_column",
+        "fix_safe_to_automate": true,
+        "fix_instructions": "Add the 'upi_ref_id' column to the target table schema and rerun the pipeline.",
+        "estimated_data_loss_pct": 0
+      },
+      "fix_applied": {
+        "status": "unknown_action",
+        "action": "add_missing_column"
+      },
+      "validation": {
+        "validation": "skipped",
+        "message": "Status: unknown_action"
+      },
+      "outcome": "skipped",
+      "alert_required": true
+    },
+    {
+      "incident_id": "INC-002",
+      "timestamp": "2026-06-01T12:08:47.295086",
+      "pipeline": "transactions_daily_load",
+      "original_error": "ColumnNotFoundError: column 'upi_ref_id' not found in target table",
+      "heal_attempt": 3,
+      "diagnosis": {
+        "root_cause_category": "schema_drift",
+        "root_cause_summary": "The target table schema has changed and no longer includes the 'upi_ref_id' column, causing the pipeline to fail.",
+        "fix_action": "add_missing_column",
+        "fix_safe_to_automate": true,
+        "fix_instructions": "Add the 'upi_ref_id' column to the target table schema to align it with the source data schema.",
+        "estimated_data_loss_pct": 0
+      },
+      "fix_applied": {
+        "status": "unknown_action",
+        "action": "add_missing_column"
+      },
+      "validation": {
+        "validation": "skipped",
+        "message": "Status: unknown_action"
+      },
+      "outcome": "skipped",
+      "alert_required": true
+    },
+    {
+      "incident_id": "INC-003",
+      "timestamp": "2026-06-01T12:08:49.110123",
+      "pipeline": "amount_aggregation",
+      "original_error": "DataError: invalid input syntax for type numeric: '' on column 'amount'",
+      "heal_attempt": 1,
+      "diagnosis": {
+        "root_cause_category": "type_error",
+        "root_cause_summary": "The pipeline failed due to an invalid input syntax for the numeric type in the 'amount' column, indicating a type mismatch where empty strings were present.",
+        "fix_action": "cast_column_type",
+        "fix_safe_to_automate": true,
+        "fix_instructions": "Update the data ingestion process to handle empty strings in the 'amount' column by either converting them to NULL or a default numeric value (e.g., 0) before casting to the numeric type.",
+        "estimated_data_loss_pct": 0.1
+      },
+      "fix_applied": {
+        "status": "fixed",
+        "action": "cast_column_type",
+        "rows_fixed": 21,
+        "output_file": "/Users/as-mac-1288/sigma-genai-de/day11/lab/agent_outputs/fixed_transactions_raw.csv"
+      },
+      "validation": {
+        "validation": "passed",
+        "clean_rows": 500,
+        "message": "Fixed file has 500 clean rows"
+      },
+      "outcome": "passed",
+      "alert_required": false
+    }
+  ],
+  "student_judgment": "This is not a success; dropping 15% of rows silently leads to critical data loss and downstream aggregation discrepancy without the team's knowledge. I would change the alerting logic to enforce a maximum allowable data loss threshold (e.g., <1%) and guarantee that any auto-remediation that drops rows always triggers a high-priority warning alert to the DE team."
+}
