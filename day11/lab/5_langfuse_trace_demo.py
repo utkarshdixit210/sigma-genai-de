@@ -101,6 +101,14 @@ TRANSACTIONS = [
 ]
 
 # ── Prompt builder — THIS is what you fix ─────────────────────────────────────
+CATEGORIES = {
+    "QuickMart": "Retail/Grocery",
+    "FuelPlus": "Fuel Station",
+    "Apollo Hospital": "Healthcare/Hospital",
+    "CloudStore": "Software/SaaS",
+    "CafeBlend": "Food/Beverage"
+}
+
 def build_prompt(txn: dict) -> str:
     """
     Build the quality-check prompt for a transaction.
@@ -109,19 +117,24 @@ def build_prompt(txn: dict) -> str:
     merchant_category. The LLM sees ₹9,80,000 with no context and flags it
     as an outlier. Fix: add merchant_category to the prompt for all transactions.
     """
+    category = CATEGORIES.get(txn['merchant'], "General")
+    current_date = "2026-06-01"
     return f"""You are a data quality agent for Sigma DataTech, a fintech platform.
+Today's date is: {current_date}
 
 Evaluate this transaction and return one of: PASS | QUARANTINE | FLAG
 
 Transaction:
   id:       {txn['id']}
   merchant: {txn['merchant']}
+  category: {category}
   amount:   {txn['amount']} {txn['currency']}
   date:     {txn['date']}
+  notes:    {txn['note']}
 
 Rules:
-  - QUARANTINE if: negative amount, unknown currency, future date, null id
-  - FLAG if: amount > 500000 INR with no business context
+  - QUARANTINE if: negative amount, unknown currency (valid currencies are: INR, USD, EUR, GBP), date is strictly after today's date ({current_date}), null id
+  - FLAG if: amount > 500000 INR with no business context (notes do not explain the transaction)
   - PASS if: all fields valid and amount is reasonable for the merchant type
 
 Respond with JSON only:
