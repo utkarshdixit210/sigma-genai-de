@@ -185,6 +185,10 @@ def fetch_live_data(bucket: str, region: str) -> dict:
     return {"report_md": report_md, "report_key": report_key, "quarantine_df": quarantine_df, "alarms": alarms}
 
 
+
+
+
+
 # ── Load data based on mode ───────────────────────────────────────────────────
 if app_mode == "Live AWS (S3 & CloudWatch)":
     with st.spinner("Fetching live data from AWS S3 and CloudWatch..."):
@@ -400,21 +404,21 @@ with c6:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ── Section 2: Agent Status ──────────────────────────────────────────────────
-st.subheader("🤖 Agent Swarm Status")
-agents = [
-    ("Supervisor Agent", "Orchestrates full self-healing loop: Forensics → Rollback → Replay → Hardening → Notify."),
-    ("Forensics Agent", "Scans S3 bronze and CloudWatch. Isolated the exact 4-minute silent failure window."),
-    ("Impact Agent", "Evaluates SLA contracts and computes business GMV losses across merchants."),
-    ("Rollback Agent", "Safely reverts sigma-kinesis-producer LIVE alias from v2 to stable v1."),
-    ("Recovery Agent", "Replays Bronze S3 records, remaps schema drift, quarantines bad rows, loads Snowflake."),
-    ("Hardening Agent", "Deploys 3 production CloudWatch alarms to catch future silent failures."),
-    ("Reporting Agent", "Compiles CTO-ready post-mortem report and broadcasts SNS alert."),
-]
-col_a, col_b = st.columns(2)
-for idx, (name, desc) in enumerate(agents):
-    target_col = col_a if idx % 2 == 0 else col_b
-    with target_col:
+# ── Section 2: Agent Status & Section 3: Timeline ────────────────────────────
+left_col, right_col = st.columns([1, 1])
+
+with left_col:
+    st.subheader("🤖 Agent Swarm Status")
+    agents = [
+        ("Supervisor Agent", "Orchestrates full self-healing loop: Forensics → Rollback → Replay → Hardening → Notify."),
+        ("Forensics Agent", "Scans S3 bronze and CloudWatch. Isolated the exact 4-minute silent failure window."),
+        ("Impact Agent", "Evaluates SLA contracts and computes business GMV losses across merchants."),
+        ("Rollback Agent", "Safely reverts sigma-kinesis-producer LIVE alias from v2 to stable v1."),
+        ("Recovery Agent", "Replays Bronze S3 records, remaps schema drift, quarantines bad rows, loads Snowflake."),
+        ("Hardening Agent", "Deploys 3 production CloudWatch alarms to catch future silent failures."),
+        ("Reporting Agent", "Compiles CTO-ready post-mortem report and broadcasts SNS alert."),
+    ]
+    for name, desc in agents:
         st.markdown(
             f"""
             <div class="agent-card">
@@ -423,6 +427,34 @@ for idx, (name, desc) in enumerate(agents):
                     <span class="glow-green" style="font-size: 12px; font-weight: bold; text-transform: uppercase;">● Complete</span>
                 </div>
                 <div style="font-size: 13px; color: #9ca3af;">{desc}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+with right_col:
+    st.subheader("📅 Incident Timeline")
+    timeline = [
+        ("09:30:30", "Lambda v2 Deployed", "Developer pushes schema-breaking version to LIVE alias.", "glow-red"),
+        ("09:31:00", "Silent Failure Begins", "Snowflake COPY INTO silently rejects 847 malformed records.", "glow-red"),
+        ("09:32:00", "Supervisor Triggered", "Self-healing swarm dispatches Forensics Agent.", "glow-yellow"),
+        ("09:32:15", "Root Cause Isolated", "Forensics correlates Lambda version change with 0-row Snowflake load.", "glow-blue"),
+        ("09:32:30", "Lambda Reverted", "Rollback Agent restores LIVE alias to safe Version 1.", "glow-green"),
+        ("09:32:42", "Records Replayed", "Recovery Agent remaps fields and replays from Bronze S3.", "glow-blue"),
+        ("09:32:50", "Snowflake Loaded", "846 clean records loaded. 1 quarantined to S3.", "glow-green"),
+        ("09:32:56", "Alarms Created", "Hardening Agent deploys 3 CloudWatch safeguards.", "glow-green"),
+        ("09:33:15", "Report Published", "Post-mortem uploaded to S3. SNS alert broadcast.", "glow-green"),
+    ]
+    for time, event, desc, severity in timeline:
+        st.markdown(
+            f"""
+            <div class="timeline-item">
+                <div class="timeline-badge"></div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 13px; font-weight: bold; color: #3b82f6;">{time} UTC</span>
+                    <span class="{severity}" style="font-weight: bold; font-size: 11px;">{event.upper()}</span>
+                </div>
+                <div style="font-size: 13px; color: #d1d5db; margin-top: 4px;">{desc}</div>
             </div>
             """,
             unsafe_allow_html=True,

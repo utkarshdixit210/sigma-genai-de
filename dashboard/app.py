@@ -229,6 +229,10 @@ def fetch_live_data(bucket: str, region: str) -> dict:
     }
 
 
+
+
+
+
 # Load data based on selected mode
 if app_mode == "Live AWS (S3 & CloudWatch)":
     with st.spinner("Fetching live data from AWS S3 and CloudWatch..."):
@@ -454,25 +458,25 @@ with c6:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ── 2. Agent Status Panel ─────────────────────────────────────────────────────
-st.subheader("🤖 Agent Swarm Status Tracer")
-st.caption("Active monitoring of the Bedrock 7-Agent team participating in the self-healing workflow:")
+# ── 2. Agent Status Panel & 3. Incident Timeline ──────────────────────────────
+left_col, right_col = st.columns([1, 1])
 
-agents = [
-    {"name": "Supervisor Agent", "status": "Complete", "class": "glow-green", "border": "", "desc": "Orchestrates full self-healing loop: Forensics ➔ Rollback ➔ Replay ➔ Hardening ➔ Notify."},
-    {"name": "Forensics Agent", "status": "Complete", "class": "glow-green", "border": "", "desc": "Scans S3 bronze and CloudWatch. Isolated the exact 4-minute silent ingestion failure window."},
-    {"name": "Impact Agent", "status": "Complete", "class": "glow-green", "border": "", "desc": "Evaluates SLA contracts and computes business GMV losses (Detected 847 records unloaded)."},
-    {"name": "Rollback Agent", "status": "Complete", "class": "glow-green", "border": "", "desc": "Safely rolls back 'sigma-kinesis-producer' LIVE alias from v2 to stable v1 on AWS Lambda."},
-    {"name": "Recovery Agent", "status": "Complete", "class": "glow-green", "border": "", "desc": "Replays records from Bronze S3. Normalizes drift schema, quarantines bad rows & loads Snowflake."},
-    {"name": "Hardening Agent", "status": "Complete", "class": "glow-green", "border": "", "desc": "Deploys real-time metric filters and creates three CloudWatch alarms for future safeguards."},
-    {"name": "Reporting Agent", "status": "Complete", "class": "glow-green", "border": "", "desc": "Compiles CTO-ready post-mortem report and broadcasts SMS alerts via Amazon SNS."},
-]
-
-col_a, col_b = st.columns(2)
-for idx, agent in enumerate(agents):
-    target_col = col_a if idx % 2 == 0 else col_b
-    border_style = "agent-card-failed" if agent["status"] == "Failed" else ("agent-card-running" if agent["status"] == "Running" else "")
-    with target_col:
+with left_col:
+    st.subheader("🤖 Agent Swarm Status Tracer")
+    st.caption("Active monitoring of the Bedrock 7-Agent team participating in the self-healing workflow:")
+    
+    agents = [
+        {"name": "Supervisor Agent", "status": "Complete", "class": "glow-green", "border": "", "desc": "Orchestrates full self-healing loop: Forensics ➔ Rollback ➔ Replay ➔ Hardening ➔ Notify."},
+        {"name": "Forensics Agent", "status": "Complete", "class": "glow-green", "border": "", "desc": "Scans S3 bronze and CloudWatch. Isolated the exact 4-minute silent ingestion failure window."},
+        {"name": "Impact Agent", "status": "Complete", "class": "glow-green", "border": "", "desc": "Evaluates SLA contracts and computes business GMV losses (Detected 847 records unloaded)."},
+        {"name": "Rollback Agent", "status": "Complete", "class": "glow-green", "border": "", "desc": "Safely rolls back 'sigma-kinesis-producer' LIVE alias from v2 to stable v1 on AWS Lambda."},
+        {"name": "Recovery Agent", "status": "Complete", "class": "glow-green", "border": "", "desc": "Replays records from Bronze S3. Normalizes drift schema, quarantines bad rows & loads Snowflake."},
+        {"name": "Hardening Agent", "status": "Complete", "class": "glow-green", "border": "", "desc": "Deploys real-time metric filters and creates three CloudWatch alarms for future safeguards."},
+        {"name": "Reporting Agent", "status": "Complete", "class": "glow-green", "border": "", "desc": "Compiles CTO-ready post-mortem report and broadcasts SMS alerts via Amazon SNS."},
+    ]
+    
+    for agent in agents:
+        border_style = "agent-card-failed" if agent["status"] == "Failed" else ("agent-card-running" if agent["status"] == "Running" else "")
         st.markdown(
             f"""
             <div class="agent-card {border_style}">
@@ -483,6 +487,37 @@ for idx, agent in enumerate(agents):
                     </span>
                 </div>
                 <div style="font-size: 13px; color: #9ca3af;">{agent['desc']}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+with right_col:
+    st.subheader("📅 Live Incident Timeline")
+    st.caption("Sequence of autonomous triggers, diagnoses, and remediation actions:")
+    
+    timeline = [
+        {"time": "09:30:30 UTC", "event": "Lambda Version 2 Deployed", "desc": "Developer points Lambda LIVE alias to Version 2 containing schema alterations.", "severity": "glow-red"},
+        {"time": "09:31:00 UTC", "event": "Silent Failure Commences", "desc": "Ingestion drifts. Snowflake COPY INTO rejects 847 malformed JSON records silently.", "severity": "glow-red"},
+        {"time": "09:32:00 UTC", "event": "Supervisor Triggered", "desc": "Self-healing swarm awakes. Forensics agent is dispatched to investigate the pipeline.", "severity": "glow-yellow"},
+        {"time": "09:32:15 UTC", "event": "Failure Window Correlated", "desc": "Forensics identifies Lambda version change as the root cause of the silent 0-row load.", "severity": "glow-blue"},
+        {"time": "09:32:30 UTC", "event": "Lambda Alias Reverted", "desc": "Rollback agent returns LIVE alias back to safe Version 1. Pipeline immediately recovers.", "severity": "glow-green"},
+        {"time": "09:32:45 UTC", "event": "Bronze S3 Replay Launched", "desc": "Recovery agent retrieves 847 raw JSON files from bronze prefix and applies field remapping.", "severity": "glow-blue"},
+        {"time": "09:32:50 UTC", "event": "Snowflake Loading Complete", "desc": "846 transactions loaded cleanly using idempotent MERGE. 1 row quarantined to S3.", "severity": "glow-green"},
+        {"time": "09:32:56 UTC", "event": "CloudWatch Safeguards Created", "desc": "Hardening Agent deploys 3 custom metrics and alarms to AWS. Future drift will trigger instant alarms.", "severity": "glow-green"},
+        {"time": "09:33:15 UTC", "event": "Post-Mortem Ready", "desc": "Incident report published, and SNS notification dispatched to administrative teams.", "severity": "glow-green"},
+    ]
+    
+    for item in timeline:
+        st.markdown(
+            f"""
+            <div class="timeline-item">
+                <div class="timeline-badge"></div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 13px; font-weight: bold; color: #3b82f6;">{item['time']}</span>
+                    <span class="{item['severity']}" style="font-weight: bold; font-size: 11px;">{item['event'].upper()}</span>
+                </div>
+                <div style="font-size: 13px; color: #d1d5db; margin-top: 4px;">{item['desc']}</div>
             </div>
             """,
             unsafe_allow_html=True,
