@@ -174,13 +174,13 @@ def fetch_live_data(bucket: str, region: str) -> dict:
     quarantine_df = pd.DataFrame()
     alarms = []
 
-    # 1. Fetch Latest S3 Incident Report
+    # 1. Fetch Latest S3 Incident Report (.md only — skip empty .json stubs)
     try:
         resp = s3.list_objects_v2(Bucket=bucket, Prefix="reports/")
         objects = resp.get("Contents", [])
-        if objects:
-            # Filter reports containing today or simulated dates
-            latest = sorted(objects, key=lambda x: x["LastModified"], reverse=True)[0]
+        md_objects = [o for o in objects if o["Key"].endswith(".md")]
+        if md_objects:
+            latest = sorted(md_objects, key=lambda x: x["LastModified"], reverse=True)[0]
             report_key = latest["Key"]
             report_md = s3.get_object(Bucket=bucket, Key=report_key)["Body"].read().decode("utf-8")
     except Exception as e:

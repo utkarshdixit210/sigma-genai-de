@@ -22,7 +22,7 @@ Usage:
 ==============================================================================
 """
 
-import argparse, boto3, json, random, time, sys
+import argparse, boto3, json, random, time, sys, os
 from datetime import datetime, timedelta
 
 random.seed()  # different seed each run so outputs differ per team
@@ -127,6 +127,48 @@ def main():
     print("=" * 60)
     print("SIGMA DATATECH — KINESIS DATA GENERATOR")
     print("=" * 60)
+def send_to_s3(bucket_name, records, region):
+    """Upload records as a JSON Lines file directly to S3 bronze/ prefix to simulate Firehose."""
+    import boto3
+    s3 = boto3.client("s3", region_name=region)
+    # Firehose folder structure: YYYY/MM/DD/HH
+    # We use 2026-06-04 at 02:00 UTC to perfectly match the "Silent Disaster" timestamp
+    prefix = "bronze/2026/06/04/02/"
+    filename = f"transactions_{int(time.time())}.json"
+    s3_path = f"{prefix}{filename}"
+    
+    # Serialize as line-delimited JSON (JSON Lines)
+    body = "\n".join(json.dumps(r) for r in records)
+    
+    s3.put_object(
+        Bucket=bucket_name,
+        Key=s3_path,
+        Body=body.encode("utf-8"),
+        ContentType="application/json"
+    )
+    print(f"\n  [S3 DIRECT INJECTION] Uploaded {len(records)} records directly to:")
+    print(f"    s3://{bucket_name}/{s3_path}")
+    return True
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+def main():
+    parser = argparse.ArgumentParser(description="Sigma DataTech Kinesis Data Generator")
+    parser.add_argument("--mode",    choices=["clean","chaos"], default="clean")
+    parser.add_argument("--inject",  choices=["schema_drift","pii_leak","quality_rot","all"], default=None)
+    parser.add_argument("--records", type=int, default=200)
+    parser.add_argument("--stream",  default="sigma-transactions")
+    parser.add_argument("--region",  default="us-east-1")
+    parser.add_argument("--delay",   type=float, default=0.01, help="Seconds between records")
+    args = parser.parse_args()
+
+    if args.mode == "chaos" and args.inject is None:
+        print("[ERROR] --mode chaos requires --inject flag")
+        print("        Options: schema_drift / pii_leak / quality_rot / all")
+        sys.exit(1)
+
+    print("=" * 60)
+    print("SIGMA DATATECH — KINESIS DATA GENERATOR")
+    print("=" * 60)
     print(f"  Mode   : {args.mode.upper()}")
     if args.inject:
         print(f"  Inject : {args.inject.upper()}")
@@ -135,18 +177,24 @@ def main():
     print(f"  Region : {args.region}")
     print("=" * 60)
 
+    # Detect if we should use Kinesis or S3 Direct injection
+    s3_bucket = os.getenv("SIGMA_S3_BUCKET", "sigma-datatech-ud")
+    s3_mode = False
+    client = None
+    
     try:
         client = boto3.client("kinesis", region_name=args.region)
-        # Quick check — will raise if credentials or stream don't exist
         client.describe_stream_summary(StreamName=args.stream)
+        print("  Using live AWS Kinesis ingestion stream.")
     except Exception as e:
-        print(f"[ERROR] Cannot connect to Kinesis stream '{args.stream}': {e}")
-        print("        Check: aws kinesis list-streams --region", args.region)
-        sys.exit(1)
+        print(f"  [KINESIS UNAVAILABLE] Bypassing streaming: {e}")
+        print(f"  Switching to S3 DIRECT INJECTION (Bucket: {s3_bucket})")
+        s3_mode = True
 
     sent = 0
     errors = 0
     start = time.time()
+    generated_records = []
 
     for i in range(args.records):
         record = make_clean_record(i)
@@ -160,21 +208,33 @@ def main():
             if inj == "quality_rot" or inj == "all":
                 record = inject_quality_rot(record, i, args.records)
 
-        # Only print every 10th record to keep output readable
-        verbose = (i % 10 == 0)
-        ok = send_to_kinesis(client, args.stream, record, verbose=verbose)
-        if ok:
-            sent += 1
+        generated_records.append(record)
+        verbose = (i % 50 == 0)
+        
+        if not s3_mode:
+            ok = send_to_kinesis(client, args.stream, record, verbose=verbose)
+            if ok:
+                sent += 1
+            else:
+                errors += 1
         else:
-            errors += 1
-
+            if verbose:
+                tid = record.get("transaction_id", "NULL") or "NULL"
+                name = record.get("merchant_name") or record.get("merchant_nm", "?")
+                amt = record.get("amount", 0)
+                print(f"  [MOCK] {str(tid):12} | {name:12} | {float(amt):>10,.2f}")
+            sent += 1
+            
         time.sleep(args.delay)
+
+    if s3_mode:
+        send_to_s3(s3_bucket, generated_records, args.region)
 
     elapsed = round(time.time() - start, 1)
     print("=" * 60)
     print(f"  DONE in {elapsed}s")
-    print(f"  Sent  : {sent} records")
-    print(f"  Errors: {errors} records")
+    print(f"  Sent/Mocked : {sent} records")
+    print(f"  Errors      : {errors} records")
     if args.mode == "chaos":
         print()
         if args.inject in ("schema_drift", "all"):
@@ -193,8 +253,6 @@ def main():
             print(f"    ~{round(args.records*0.015)} unknown currencies (XYZ)")
             print(f"    ~{est_bad} total bad records out of {args.records}")
     print("=" * 60)
-    print(f"  Firehose delivers to S3 in ~60-90 seconds.")
-    print(f"  Watch: aws s3 ls s3://<your-bucket>/bronze/ --recursive")
     print("=" * 60)
 
 if __name__ == "__main__":

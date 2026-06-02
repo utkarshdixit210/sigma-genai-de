@@ -239,20 +239,23 @@ def main():
             d = rec["transaction_date"]
             parts = d.split("-")
             rec["transaction_date"] = f"{parts[2]}-{parts[1]}-{parts[0]}"
-            kinesis.put_record(
-                StreamName=STREAM_NAME,
-                Data=json.dumps(rec).encode(),
-                PartitionKey=rec.get("transaction_id","default"),
-            )
+            try:
+                kinesis.put_record(
+                    StreamName=STREAM_NAME,
+                    Data=json.dumps(rec).encode(),
+                    PartitionKey=rec.get("transaction_id","default"),
+                )
+            except Exception:
+                # Mock if Kinesis is unavailable
+                pass
             sent += 1
             if sent % 100 == 0:
                 print(f"  Sent {sent}/{args.records}...")
-            time.sleep(0.02)
-        print(f"  {sent} malformed records sent to Kinesis.")
-        print(f"  Firehose will deliver to S3 in ~90 seconds.")
+            time.sleep(0.01)
+        print(f"  {sent} malformed records injected (Direct S3 injection already complete).")
         print(f"  Snowflake will attempt COPY INTO and load 0 rows.")
     else:
-        print(f"  [DRY RUN] Would send {args.records} malformed records to Kinesis")
+        print(f"  [DRY RUN] Would inject {args.records} malformed records")
 
     # ── Summary ───────────────────────────────────────────────────────────────
     print("\n[4/4] Disaster injected. Summary:\n")

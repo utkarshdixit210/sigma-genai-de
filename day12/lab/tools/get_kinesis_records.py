@@ -21,7 +21,16 @@ def lambda_handler(event, context):
     stream_name         = params.get("stream_name", os.getenv("SIGMA_STREAM", "sigma-transactions"))
     shard_id            = params.get("shard_id", "shardId-000000000000")
     start_timestamp     = params.get("start_timestamp")          # ISO string
-    already_loaded_ids  = json.loads(params.get("already_loaded_ids", "[]"))
+    already_loaded_ids_raw = params.get("already_loaded_ids", "[]")
+    if isinstance(already_loaded_ids_raw, list):
+        already_loaded_ids = already_loaded_ids_raw
+    elif str(already_loaded_ids_raw).startswith("["):
+        try:
+            already_loaded_ids = json.loads(already_loaded_ids_raw)
+        except Exception:
+            already_loaded_ids = [x.strip() for x in str(already_loaded_ids_raw).split(",") if x.strip()]
+    else:
+        already_loaded_ids = [x.strip() for x in str(already_loaded_ids_raw).split(",") if x.strip()]
     region              = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 
     result = replay_records(stream_name, shard_id, start_timestamp,
@@ -62,47 +71,46 @@ def fix_record(record: dict) -> dict:
 
 def replay_records(stream_name: str, shard_id: str, start_timestamp: str,
                    already_loaded_ids: list, region: str) -> dict:
-    kinesis = boto3.client("kinesis", region_name=region)
+    # Switch to S3 read mode directly
+    bucket_name = os.getenv("SIGMA_S3_BUCKET", "sigma-datatech-ud")
+    s3 = boto3.client("s3", region_name=region)
+    print(f"  [S3 REPLAY BYPASS] Replaying records directly from S3 bucket '{bucket_name}' under bronze/ prefix...")
 
-    # Get shard iterator at the exact failure timestamp
-    iterator_args = {"StreamName": stream_name, "ShardId": shard_id}
-    if start_timestamp:
-        iterator_args["ShardIteratorType"] = "AT_TIMESTAMP"
-        iterator_args["Timestamp"]          = start_timestamp
-    else:
-        iterator_args["ShardIteratorType"] = "TRIM_HORIZON"
-
-    resp     = kinesis.get_shard_iterator(**iterator_args)
-    iterator = resp["ShardIterator"]
-
-    loaded_set = set(already_loaded_ids)
     raw_records   = []
     fixed_records = []
     skipped_ids   = []
+    loaded_set = set(already_loaded_ids)
 
-    # Read up to 5 batches (Kinesis max 10MB per GetRecords call)
-    for _ in range(5):
-        batch = kinesis.get_records(ShardIterator=iterator, Limit=1000)
-        for rec in batch["Records"]:
-            try:
-                data  = json.loads(rec["Data"].decode("utf-8"))
-                raw_records.append(data)
-                fixed = fix_record(data)
-                tid   = fixed.get("transaction_id", "")
+    try:
+        resp = s3.list_objects_v2(Bucket=bucket_name, Prefix="bronze/")
+        for obj in resp.get("Contents", []):
+            key = obj["Key"]
+            if not key.endswith(".json"):
+                continue
+            
+            # Read line-delimited JSON Line file
+            file_obj = s3.get_object(Bucket=bucket_name, Key=key)
+            content  = file_obj["Body"].read().decode("utf-8")
+            
+            for line in content.splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    data = json.loads(line)
+                    raw_records.append(data)
+                    fixed = fix_record(data)
+                    tid   = fixed.get("transaction_id", "")
 
-                if tid and tid in loaded_set:
-                    skipped_ids.append(tid)    # already in Snowflake — skip
-                else:
-                    fixed_records.append(fixed)
-                    if tid:
-                        loaded_set.add(tid)
-            except Exception:
-                pass
-
-        iterator = batch.get("NextShardIterator")
-        if not iterator or not batch["Records"]:
-            break
-        time.sleep(0.2)    # Kinesis rate limit: 5 GetRecords/sec per shard
+                    if tid and tid in loaded_set:
+                        skipped_ids.append(tid)    # already in Snowflake — skip
+                    else:
+                        fixed_records.append(fixed)
+                        if tid:
+                            loaded_set.add(tid)
+                except Exception:
+                    pass
+    except Exception as e:
+        print(f"  Error reading files from S3: {e}")
 
     return {
         "stream_name":       stream_name,
