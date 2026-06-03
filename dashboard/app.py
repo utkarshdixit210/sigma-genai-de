@@ -278,6 +278,22 @@ The Lambda v2 code changed field outputs. Firehose successfully delivered malfor
 * Reverted `sigma-kinesis-producer` LIVE alias from Version 2 back to Version 1.
 * Remapped bad S3 Bronze fields (`merchant_nm` -> `merchant_name`) and converted `DD-MM-YYYY` dates back to standard `YYYY-MM-DD`.
 * Uploaded malformed rows to S3 quarantine bucket and replayed valid rows cleanly to Snowflake.
+
+---
+
+## Agent Performance
+
+| Agent | Latency (sec) | Tool Calls | Key Finding |
+|---|---|---|---|
+| **Supervisor Agent** | 2.4s | 0 | Orchestrated self-healing loop. |
+| **Forensics Agent** | 4.8s | 3 | Isolated schema drift on v2 Lambda. |
+| **Impact Agent** | 3.1s | 2 | Computed missing volume (847 rows). |
+| **Rollback Agent** | 2.9s | 1 | Restored LIVE alias to safe v1 Lambda. |
+| **Recovery Agent** | 5.2s | 4 | Replayed 846 rows and quarantined 1 row. |
+| **Hardening Agent** | 4.2s | 3 | Deployed 3 CloudWatch alarms to AWS. |
+| **Reporting Agent** | 3.4s | 1 | Generated post-mortem report and SNS alert. |
+
+**Total Swarm Execution Time:** **26 seconds**
 """
 
     quarantine_df = pd.DataFrame([

@@ -187,7 +187,7 @@ def main():
         print(f"[ERROR] Folder not found: {models_dir}")
         sys.exit(1)
 
-    sql_files = sorted(models_dir.glob("*.sql"))
+    sql_files = sorted(models_dir.rglob("*.sql"))
     if not sql_files:
         print(f"[ERROR] No .sql files found in {models_dir}")
         sys.exit(1)
